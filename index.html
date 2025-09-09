@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>NovelNotes</title>
+
+  <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="apple-touch-icon" href="assets/favicon.png">
+
+  <style>
+    :root { --bg:#0f1115; --panel:#171923; --muted:#8b93a7; --text:#e7ecf2; --accent:#7aa2f7; --accent2:#a7c7ff; --danger:#ff6b6b; --wood:#4e3827; --wood2:#6b4b36; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; background: var(--bg); color: var(--text); }
+    .app { display:grid; grid-template-columns: 340px 1fr; height: 100vh; }
+    aside { background: var(--panel); border-right:1px solid #24283b; padding: 14px; overflow:auto; }
+    main { display:grid; grid-template-rows: auto auto 1fr; height:100%; }
+    header { display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid #24283b; background: #121420; }
+    header h1 { font-size:16px; margin:0; font-weight:600; letter-spacing:.3px; }
+    header .spacer { flex:1; }
+    button, select, input[type="text"] { background:#1d2130; color:var(--text); border:1px solid #2a3045; border-radius:10px; padding:6px 8px; font-size:13px; }
+    button { cursor:pointer; }
+    button:hover { border-color:#3b476a; }
+
+    .group-title { font-size:12px; color:var(--muted); margin:16px 8px 6px; text-transform:uppercase; letter-spacing:.08em; }
+    .list { display:flex; flex-direction:column; gap:6px; }
+    #movePanel select { flex:1; background:#1d2130; color:var(--text); border:1px solid #2a3045; border-radius:10px; padding:8px 10px; font-size:14px; }
+    .item { padding:6px 8px; border-radius:10px; background:#141826; border:1px solid #24283b; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+    .item.is-active { outline:2px solid var(--accent); }
+    .row { display:flex; gap:8px; align-items:center; }
+    .row input[type="text"] { flex:1; }
+
+    .toolbar { display:flex; gap:8px; padding:10px 16px; border-bottom:1px solid #24283b; background:#0f1322; }
+
+    .content { display:grid; grid-template-columns: 1fr 260px; gap:16px; padding:16px; overflow:hidden; }
+    .page { padding:16px; overflow:auto; background:transparent; border-radius:12px; }
+    .page h2 { margin:0 0 8px; font-size:18px; }
+    .muted { color: var(--muted); font-size:13px; }
+
+    .checklist { display:flex; flex-direction:column; gap:6px; margin-top:14px; }
+    .todo { display:flex; gap:10px; align-items:flex-start; padding:10px; background:#141826; border:1px solid #24283b; border-radius:12px; }
+    .todo input[type="checkbox"]{ transform: translateY(2px); }
+    .todo .text { flex:1; white-space:pre-wrap; }
+    .todo.done .text { text-decoration: line-through; opacity:.6; }
+
+    .footer { margin-top:20px; font-size:12px; color:var(--muted); }
+
+    .danger { color:#ffd8d8; border-color:#4a1f2a; background:#23121a; }
+    .danger:hover { border-color:#7a2a3c; }
+
+    .pill { padding:2px 8px; border:1px solid #2a3045; border-radius:999px; font-size:12px; color:var(--muted); }
+
+    .sep { height:1px; background:#24283b; margin:12px 0; }
+    .hidden { display:none; }
+
+    /* Visual nav and timeline styles omitted for brevity (same as previous) */
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="group">
+      <div class="group-title">Libraries</div>
+      <div id="libraries" class="list"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="newLibraryName" type="text" placeholder="New library name" />
+        <button id="addLibraryBtn">Add</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button id="delLibraryBtn" class="danger" title="Delete selected library">
+          Delete Library
+        </button>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
+      <div class="group-title">Shelves</div>
+      <div id="shelves" class="list"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="newShelfName" type="text" placeholder="New shelf name" />
+        <button id="addShelfBtn">Add</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button id="delShelfBtn" class="danger" title="Delete selected shelf">
+          Delete Shelf
+        </button>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
+      <div class="group-title">Books</div>
+      <div class="row" style="margin:4px 0 8px">
+        <label class="muted" style="display:flex;align-items:center;gap:6px"><input id="showArchived" type="checkbox"/> Show archived</label>
+      </div>
+      <div id="books" class="list"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="newBookName" type="text" placeholder="New book name" />
+        <button id="addBookBtn">Add</button>
+      </div>
+      <div class="row" style="margin-top:6px; gap:6px; flex-wrap:wrap">
+        <button id="delBookBtn" class="danger" title="Delete selected book">Delete Book</button>
+        <button id="archiveBookBtn" title="Archive / Unarchive selected book">Archive / Unarchive</button>
+        <button id="moveBookBtn" title="Move selected book">Move Book</button>
+      </div>
+      <div id="movePanel" class="row hidden" style="margin-top:6px; flex-direction:column; align-items:stretch; gap:6px">
+        <div class="row">
+          <select id="moveTargetLib"></select>
+          <select id="moveTargetShelf"></select>
+        </div>
+        <div class="row">
+          <button id="confirmMoveBtn">Confirm Move</button>
+          <button id="cancelMoveBtn" class="danger">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="group">
+      <div class="group-title">Utilities</div>
+      <div class="list">
+        <button id="exportBtn">Export JSON</button>
+        <input id="importInput" type="file" class="hidden" accept="application/json" />
+        <button id="importBtn">Import JSON</button>
+        <button id="newDayBtn">Start New Day</button>
+        <button id="resetBtn" class="danger">Reset (wipe data)</button>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <h1>📖 Novel Notes</h1>
+      <span class="pill" id="pathPill">—</span>
+      <span class="pill" id="scorePill">Score: 0</span>
+      <div class="spacer"></div>
+      <button id="toggleNavBtn" title="Toggle visual navigation">Visual Nav</button>
+      <button id="backToTodayBtn" title="Jump to today">Today</button>
+      <span id="todayLabel" class="muted"></span>
+    </header>
+    <div class="toolbar">
+      <div class="row" style="width:100%">
+        <input id="newItemText" type="text" placeholder="Add a task to today's page… (Enter)" />
+        <button id="addItemBtn">Add</button>
+      </div>
+    </div>
+    <div class="content">
+      <section class="page">
+        <h2 id="pageTitle">—</h2>
+        <div class="muted">Completed items stay on previous days. Incomplete items carry into the chosen day automatically.</div>
+        <div id="checklist" class="checklist"></div>
+        <div class="footer">Data is saved locally in your browser (localStorage). No servers. 🚫☁️</div>
+      </section>
+      <aside class="timeline">
+        <h3>Timeline</h3>
+        <div id="timelineDays"></div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script>
+  // === Novel Notes — Score Counter (all-time completed items) ===
+  (function(){
+    const SCORE_ID = 'scorePill';
+
+
+    function parseJSON(s){ try { return JSON.parse(s); } catch { return null; } }
+    function looksLikeState(obj){
+      if (!obj || !Array.isArray(obj.libraries)) return false;
+      for (const lib of obj.libraries){
+        if (lib && Array.isArray(lib.shelves)){
+          for (const sh of lib.shelves){
+            if (sh && Array.isArray(sh.books)){
+              for (const b of sh.books){ if (b && Array.isArray(b.pages)) return true; }
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+
+    function getState(){
+      const preferred = [
+        'novelnotes.v3.2','novelnotes.v3.1','novelnotes.v3','novelnotes',
+        'shelfnotes.v3.2','shelfnotes.v3.1','shelfnotes.v3','shelfnotes.v2','shelfnotes.v1','shelfnotes'
+      ];
+      for (const k of preferred){
+        const raw = localStorage.getItem(k);
+        if (!raw) continue;
+        const obj = parseJSON(raw);
+        if (looksLikeState(obj)) return obj;
+      }
+// Fallback: scan all keys
+      for (let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        const obj = parseJSON(localStorage.getItem(k));
+        if (looksLikeState(obj)) return obj;
+      }
+      return null;
+    }
+
+
+    function computeTotalCompleted(state){
+      let done = 0;
+      if (!state) return 0;
+      for (const lib of state.libraries||[]){
+        for (const shelf of lib.shelves||[]){
+          for (const book of shelf.books||[]){
+            for (const page of book.pages||[]){
+              for (const it of page.items||[]){ if (it && it.done) done++; }
+            }
+          }
+        }
+      }
+      return done;
+    }
+
+
+    function updateScore(){
+      const pill = document.getElementById(SCORE_ID);
+      if (!pill) return;
+      const state = getState();
+      const total = computeTotalCompleted(state);
+      pill.textContent = `Score: ${total}`;
+    }
+
+
+    document.addEventListener('DOMContentLoaded', updateScore);
+    window.addEventListener('storage', updateScore);
+    setInterval(updateScore, 1000);
+  })();
+
+  // ==========================
+  // NovelNotes v3.1 — local-only MVP
+  // ==========================
+  const storageKey = 'novelnotes.v3.2';
+  const isoDate = (d = new Date()) => {
+	const tz = d.getTimezoneOffset();              // minutes
+	const local = new Date(d.getTime() - tz * 60000);
+	return local.toISOString().slice(0,10);        // now YYYY-MM-DD in local time
+  };
+  const uid = () => crypto.getRandomValues(new Uint32Array(1))[0].toString(36) + Date.now().toString(36);
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+  function save(state) { localStorage.setItem(storageKey, JSON.stringify(state)); }
+
+  // Data
+  const emptyState = () => ({ version: '3.1', lastOpened: isoDate(), libraries: [] });
+  let state = load() || emptyState();
+  let sel = { libId: null, shelfId: null, bookId: null, date: state.lastOpened };
+  let navMode = 'list'; // 'list' | 'visual'
+
+  // Rollover
+  function ensurePageForDate(targetDate) {
+    for (const lib of state.libraries) {
+      for (const shelf of (lib.shelves || [])) {
+        for (const book of (shelf.books || [])) {
+          if (!book.pages) book.pages = [];
+          const hasDate = book.pages.some(p => p.date === targetDate);
+          if (!hasDate) {
+            const prev = [...book.pages].filter(p => p.date < targetDate).sort((a,b)=>a.date.localeCompare(b.date)).pop();
+            const carry = prev ? prev.items.filter(i => !i.done).map(i => ({ id: uid(), text: i.text, done:false, createdAt:new Date().toISOString(), doneAt:null })) : [];
+            book.pages.push({ date: targetDate, items: carry });
+            book.pages.sort((a,b)=>a.date.localeCompare(b.date));
+          }
+        }
+      }
+    }
+  }
+  function ensureToday() { const today = isoDate(); ensurePageForDate(today); state.lastOpened = today; save(state); }
+  function simulateNewDay() {
+    const last = new Date(state.lastOpened + 'T00:00:00');
+    last.setDate(last.getDate() + 1);
+    const next = isoDate(last);
+    ensurePageForDate(next);
+    state.lastOpened = next;
+    sel.date = next;
+    save(state);
+    renderAll();
+  }
+
+  // Helpers
+  const el = s => document.querySelector(s);
+  const getLib = () => state.libraries.find(l => l.id === sel.libId) || null;
+  const getShelf = () => (getLib()?.shelves || []).find(s => s.id === sel.shelfId) || null;
+  const getBook = () => (getShelf()?.books || []).find(b => b.id === sel.bookId) || null;
+  const getPageByDate = (book, date) => (book?.pages || []).find(p => p.date === date) || null;
+  function canDeleteShelf(shelf){ if (!shelf) return false; return (shelf.books||[]).length === 0; }
+  function canDeleteLibrary(lib){ if (!lib) return false; return !(lib.shelves||[]).some(sh => (sh.books||[]).length > 0); }
+
+  function tag(text, cls){ const d=document.createElement('div'); d.className=cls; d.textContent=text; return d; }
+
+  // Sidebar renderers
+  function renderLibrariesList(container){
+    container.innerHTML='';
+    for (const lib of state.libraries){
+      const div=document.createElement('div');
+      div.className='item' + (sel.libId===lib.id ? ' is-active':'');
+      div.textContent=lib.name;
+      div.onclick=()=>{ sel.libId=lib.id; sel.shelfId=null; sel.bookId=null; renderAll(); };
+      container.appendChild(div);
+    }
+  }
+  function renderShelvesList(container){
+    container.innerHTML='';
+    const lib=getLib(); if(!lib) return;
+    for (const shelf of (lib.shelves||[])){
+      const div=document.createElement('div');
+      div.className='item' + (sel.shelfId===shelf.id ? ' is-active':'');
+      div.textContent=shelf.name;
+      div.onclick=()=>{ sel.shelfId=shelf.id; sel.bookId=null; renderAll(); };
+      container.appendChild(div);
+    }
+  }
+  function renderBooksList(container){
+    container.innerHTML='';
+    const shelf=getShelf(); if(!shelf) return;
+    const showArchived = el('#showArchived')?.checked;
+    const books = (shelf.books||[]).filter(b => showArchived ? true : !b.archived);
+    for (const book of books){
+      const div=document.createElement('div');
+      div.className='item' + (sel.bookId===book.id ? ' is-active':'');
+      const page = getPageByDate(book, sel.date);
+      const open = page ? page.items.filter(i=>!i.done).length : 0;
+      const name = book.archived ? `${book.name} (archived)` : book.name;
+      div.textContent = open ? `${name}  (open: ${open})` : name;
+      div.onclick=()=>{ sel.bookId=book.id; renderAll(); };
+      container.appendChild(div);
+    }
+  }
+
+  // Visual versions
+  function renderLibrariesVisual(container){
+    container.innerHTML='';
+    container.appendChild(tag('Click a bookcase to open its shelves','visual-note'));
+    for (const lib of state.libraries){
+      const c=document.createElement('div'); c.className='bookcase'; c.title=lib.name;
+      c.onclick=()=>{ sel.libId=lib.id; sel.shelfId=null; sel.bookId=null; renderAll(); };
+      for(let i=0;i<3;i++){ const row=document.createElement('div'); row.className='shelfRow'; row.appendChild(tag(lib.name,'nameTag')); c.appendChild(row); }
+      container.appendChild(c);
+    }
+  }
+  function renderShelvesVisual(container){
+    container.innerHTML='';
+    const lib=getLib(); if(!lib) return;
+    container.appendChild(tag(`${lib.name}: pick a shelf`,'visual-note'));
+    for (const shelf of (lib.shelves||[])){
+      const row=document.createElement('div'); row.className='shelfRow'; row.title=shelf.name;
+      row.onclick=()=>{ sel.shelfId=shelf.id; sel.bookId=null; renderAll(); };
+      row.appendChild(tag(shelf.name,'nameTag'));
+      container.appendChild(row);
+    }
+  }
+  function renderBooksVisual(container){
+    container.innerHTML='';
+    const shelf=getShelf(); if(!shelf) return;
+    const showArchived = el('#showArchived')?.checked;
+    container.appendChild(tag(`${shelf.name}: click a book spine`,'visual-note'));
+    const row=document.createElement('div'); row.className='shelfRow'; container.appendChild(row);
+    for (const book of (shelf.books||[])){
+      if (!showArchived && book.archived) continue;
+      const spine=document.createElement('div'); spine.className='bookSpine'; spine.title=book.name; spine.textContent=book.name;
+      spine.onclick=()=>{ sel.bookId=book.id; renderAll(); };
+      spine.appendChild(tag(book.name,'nameTag'));
+      row.appendChild(spine);
+    }
+  }
+
+  function renderSidebar(){
+    const libsWrap=el('#libraries'), shelvesWrap=el('#shelves'), booksWrap=el('#books');
+    if (navMode==='visual'){ renderLibrariesVisual(libsWrap); renderShelvesVisual(shelvesWrap); renderBooksVisual(booksWrap); }
+    else { renderLibrariesList(libsWrap); renderShelvesList(shelvesWrap); renderBooksList(booksWrap); }
+
+    const parts=[]; if(getLib()) parts.push(getLib().name); if(getShelf()) parts.push(getShelf().name); if(getBook()) parts.push(getBook().name);
+    el('#pathPill').textContent = parts.length ? parts.join(' / ') : (navMode==='visual' ? 'Click a bookcase / shelf / spine' : 'Choose a library / shelf / book');
+
+    const lib=getLib(), shelf=getShelf(), book=getBook();
+    const delLibBtn=el('#delLibraryBtn'), delShelfBtn=el('#delShelfBtn'), delBookBtn=el('#delBookBtn');
+    if (delLibBtn) delLibBtn.disabled = !canDeleteLibrary(lib);
+    if (delShelfBtn) delShelfBtn.disabled = !canDeleteShelf(shelf);
+    if (delBookBtn) delBookBtn.disabled = !Boolean(book);
+  }
+
+  function renderTimeline(){
+    const wrap=el('#timelineDays');
+    wrap.innerHTML='';
+    const book=getBook(); if(!book) return;
+    const pages=[...(book.pages||[])].sort((a,b)=> b.date.localeCompare(a.date));
+    for (const p of pages){
+      const d=document.createElement('div'); d.className='day' + (p.date===sel.date ? ' active':'');
+      const open=p.items.filter(i=>!i.done).length; const done=p.items.length-open;
+      d.textContent = `${p.date} — ${done} done, ${open} open`;
+      d.onclick=()=>{ sel.date=p.date; renderAll(); };
+      wrap.appendChild(d);
+    }
+  }
+
+  function renderMain(){
+    const labelDate=new Date(sel.date+'T00:00:00');
+    el('#todayLabel').textContent=`Viewing: ${labelDate.toDateString()}`;
+
+    const book=getBook();
+    const pageTitle=el('#pageTitle');
+    const list=el('#checklist');
+    list.innerHTML='';
+
+    if (!book){ pageTitle.textContent='No book selected'; renderTimeline(); return; }
+    ensurePageForDate(sel.date);
+    const page=getPageByDate(book, sel.date);
+    pageTitle.textContent=`${book.name} — ${sel.date}`;
+
+    for (const item of page.items){
+      const row=document.createElement('div'); row.className='todo' + (item.done ? ' done':'');
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=item.done; cb.onchange=()=>{ item.done=cb.checked; item.doneAt=cb.checked?new Date().toISOString():null; save(state); renderAll(); };
+      const text=document.createElement('div'); text.className='text'; text.textContent=item.text; text.contentEditable=true; text.onblur=()=>{ item.text=text.textContent.trim(); save(state); renderAll(); };
+      const del=document.createElement('button'); del.textContent='Delete'; del.onclick=()=>{ page.items = page.items.filter(i=>i.id!==item.id); save(state); renderAll(); };
+      row.appendChild(cb); row.appendChild(text); row.appendChild(del); list.appendChild(row);
+    }
+
+    renderTimeline();
+  }
+
+  function renderAll(){ renderSidebar(); renderMain(); }
+
+  // Events
+  const q = s => document.querySelector(s);
+  const on = (sel, type, fn) => { const n = q(sel); if (n) n.addEventListener(type, fn); };
+  const setOnClick = (sel, fn) => { const n = q(sel); if (n) n.onclick = fn; };
+
+  // Library
+  setOnClick('#addLibraryBtn', () => {
+    const name = q('#newLibraryName')?.value?.trim();
+    if (!name) return;
+    const newLib = { id: uid(), name, shelves: [] };
+    state.libraries.push(newLib);
+    sel.libId = newLib.id; sel.shelfId = null; sel.bookId = null;
+    q('#newLibraryName').value = '';
+    save(state); renderAll();
+  });
+
+  // Shelf
+  setOnClick('#addShelfBtn', () => {
+    const name = q('#newShelfName')?.value?.trim();
+    const lib = getLib(); if (!lib) return alert('Pick a library first');
+    const sh = { id: uid(), name, books: [] };
+    lib.shelves = lib.shelves || [];
+    lib.shelves.push(sh);
+    sel.shelfId = sh.id; sel.bookId = null;
+    q('#newShelfName').value = '';
+    save(state); renderAll();
+  });
+
+  // Book
+  setOnClick('#addBookBtn', () => {
+    const name = q('#newBookName')?.value?.trim();
+    const shelf = getShelf(); if (!shelf) return alert('Pick a shelf first');
+    const today = state.lastOpened || isoDate();
+    const bk = { id: uid(), name, pages: [{ date: today, items: [] }] };
+    shelf.books = shelf.books || [];
+    shelf.books.push(bk);
+    sel.bookId = bk.id;
+    q('#newBookName').value = '';
+    save(state); renderAll();
+  });
+
+  function addItem(){
+    const txt=q('#newItemText')?.value?.trim(); const book=getBook();
+    if (!book){ alert('Pick a book'); }
+    else if (txt){ ensurePageForDate(sel.date); const page=getPageByDate(book, sel.date); page.items.push({ id:uid(), text:txt, done:false, createdAt:new Date().toISOString(), doneAt:null }); if(q('#newItemText')) q('#newItemText').value=''; save(state); renderAll(); }
+  }
+  setOnClick('#addItemBtn', addItem);
+  on('#newItemText','keydown', e => { if (e.key==='Enter') addItem(); });
+
+  //setOnClick('#exportBtn', () => {``
+  setOnClick('#exportBtn', () => {
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`novelnotes-${state.lastOpened}.json`; a.click(); URL.revokeObjectURL(a.href);
+  });
+  setOnClick('#importBtn', () => { const n=q('#importInput'); if(n) n.click(); });
+  on('#importInput','change', async (e)=>{
+    const file=e.target.files[0];
+    if (file){
+      const text=await file.text();
+      try { state=JSON.parse(text); sel={libId:null, shelfId:null, bookId:null, date: state.lastOpened}; save(state); renderAll(); }
+      catch { alert('Invalid JSON'); }
+      e.target.value='';
+    }
+  });
+
+  setOnClick('#resetBtn', () => {
+    if (confirm('This will erase all local data. Continue?')){ state=emptyState(); sel={libId:null, shelfId:null, bookId:null, date: state.lastOpened}; save(state); renderAll(); }
+  });
+  setOnClick('#newDayBtn', simulateNewDay);
+  setOnClick('#toggleNavBtn', () => { navMode = navMode==='list' ? 'visual' : 'list'; renderAll(); });
+  setOnClick('#backToTodayBtn', () => { sel.date = state.lastOpened; renderAll(); });
+
+  // Delete
+  setOnClick('#delLibraryBtn', () => {
+    const lib=getLib();
+    if (!lib){ alert('Select a library to delete'); }
+    else if (!canDeleteLibrary(lib)){ alert('Library cannot be deleted because it contains shelves with books. Remove or move the books first.'); }
+    else if (confirm(`Delete library "${lib.name}"? This cannot be undone.`)){
+      state.libraries = state.libraries.filter(l=>l.id!==lib.id);
+      sel={libId:null, shelfId:null, bookId:null, date: state.lastOpened};
+      save(state); renderAll();
+    }
+  });
+  setOnClick('#delShelfBtn', () => {
+    const shelf=getShelf(); const lib=getLib();
+    if (!shelf || !lib){ alert('Select a shelf to delete'); }
+    else if (!canDeleteShelf(shelf)){ alert('Shelf cannot be deleted because it contains books. Delete or move the books first.'); }
+    else if (confirm(`Delete shelf "${shelf.name}"? This cannot be undone.`)){
+      lib.shelves=(lib.shelves||[]).filter(s=>s.id!==shelf.id);
+      sel.shelfId=null; sel.bookId=null; save(state); renderAll();
+    }
+  });
+  setOnClick('#delBookBtn', () => {
+    const shelf=getShelf(); const book=getBook();
+    if (!shelf || !book){ alert('Select a book to delete'); }
+    else if (confirm(`Delete book "${book.name}" and all its pages? This cannot be undone.`)){
+      shelf.books=(shelf.books||[]).filter(b=>b.id!==book.id);
+      sel.bookId=null; save(state); renderAll();
+    }
+  });
+
+  // Archive / Move
+  setOnClick('#archiveBookBtn', () => { const book=getBook(); if (!book){ alert('Select a book first'); } else { book.archived = !book.archived; save(state); renderAll(); } });
+  setOnClick('#moveBookBtn', () => { const book=getBook(); if (!book){ alert('Select a book first'); } else { populateMoveSelectors(); const p=q('#movePanel'); if(p) p.classList.remove('hidden'); } });
+  setOnClick('#cancelMoveBtn', () => { const p=q('#movePanel'); if(p) p.classList.add('hidden'); });
+  on('#moveTargetLib','change', populateMoveShelfSelector);
+  setOnClick('#confirmMoveBtn', () => {
+    const book=getBook(); const shelf=getShelf();
+    if (book && shelf) {
+      const libSel=q('#moveTargetLib'); const shelfSel=q('#moveTargetShelf');
+      if(!libSel||!shelfSel) return;
+      const libId = libSel.value; const shelfId = shelfSel.value;
+      const targetLib = state.libraries.find(l=>l.id===libId);
+      const targetShelf = (targetLib?.shelves||[]).find(s=>s.id===shelfId);
+      if (!targetLib){ alert('Pick a library'); }
+      else if (!targetShelf){ alert('Pick a shelf'); }
+      else {
+        shelf.books = (shelf.books||[]).filter(b=>b.id!==book.id);
+        targetShelf.books = targetShelf.books || [];
+        targetShelf.books.push(book);
+        sel.libId = targetLib.id; sel.shelfId = targetShelf.id; sel.bookId = book.id;
+        save(state);
+        const p=q('#movePanel'); if(p) p.classList.add('hidden');
+        alert(`Book \"${book.name}\" moved to shelf \"${targetShelf.name}\" in library \"${targetLib.name}\".`);
+        renderAll();
+      }
+    }
+  });
+  setOnClick('#showArchived', () => renderAll());
+
+  function populateMoveSelectors(){
+    const libSel = el('#moveTargetLib'); const shelfSel = el('#moveTargetShelf');
+    if (!libSel || !shelfSel) return;
+    libSel.innerHTML=''; shelfSel.innerHTML='';
+    for (const l of state.libraries){ const opt=document.createElement('option'); opt.value=l.id; opt.textContent=l.name; opt.selected = sel.libId===l.id; libSel.appendChild(opt); }
+    populateMoveShelfSelector();
+  }
+  function populateMoveShelfSelector(){
+    const libSel = el('#moveTargetLib'); const shelfSel = el('#moveTargetShelf');
+    if (!libSel || !shelfSel) return;
+    shelfSel.innerHTML='';
+    const lib = state.libraries.find(l=>l.id===libSel.value);
+    if (lib){ for (const s of (lib.shelves||[])){ const opt=document.createElement('option'); opt.value=s.id; opt.textContent=s.name; opt.selected = sel.shelfId===s.id && sel.libId===lib.id; shelfSel.appendChild(opt); } }
+  }
+
+  // Boot
+  ensureToday(); sel.date = state.lastOpened; renderAll();
+</script>
+</body>
+</html>

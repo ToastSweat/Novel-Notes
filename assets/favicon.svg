@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1D1D3F"/>
+  <g>
+    <rect x="416" y="0" width="96" height="96" fill="#E3B341"/>
+    <polygon points="416,96 512,96 464,160" fill="#E3B341"/>
+  </g>
+  <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle"
+        font-family="Georgia, 'Times New Roman', serif" font-size="300" fill="#FFFFFF" font-weight="700">
+    NN
+  </text>
+</svg>
